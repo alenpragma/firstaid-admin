@@ -18,6 +18,7 @@ const RegisterSchema = new Schema<IRegister, RegisterModal>(
     trxId: {
       type: String,
       required: [true, 'Transaction is required'],
+      unique: true,
     },
     status: {
       type: Boolean,

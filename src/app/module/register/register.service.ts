@@ -14,9 +14,10 @@ const create = async (paylode: IRegister): Promise<any> => {
   };
   const { trxId } = paylode;
 
-  const paymentData = await Payment.findOne({
-    trxId,
-  });
+  const paymentData = await Payment.findOneAndUpdate(
+    { trxId },
+    { $set: { status: true } }
+  );
   console.log(paymentData, 'paymentData 111');
 
   // if data not found
@@ -54,7 +55,9 @@ const create = async (paylode: IRegister): Promise<any> => {
     if (result) {
       console.log(result, 'yoy');
 
-      return (response.message = 'Congratulation your registration success');
+      response.message = 'Congratulation your registration success';
+      response.dta = result;
+      return response;
     }
   }
 
