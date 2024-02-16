@@ -1,7 +1,9 @@
 import { Model } from 'mongoose';
 
 export type IRegister = {
+  id: string;
   name: string;
+  role: string;
   phone: string;
   email: string;
   trxId: string;

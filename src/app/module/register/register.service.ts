@@ -3,14 +3,23 @@ import calculatePagination from '../../../helpers/paginationHelper';
 import { IGenericResponse } from '../../../interfaces/common';
 import { IPaginationOptions } from '../../../interfaces/pagination';
 import { Payment } from '../payment/payment.Modal';
-import { Register } from './payment.Modal';
 import { IRegister, IRegisterFilterRequest } from './register.Interface';
+import { Register } from './register.Modal';
 import { ordersSearchableFields } from './register.constant';
+import { generateAdminId } from './register.utils';
 
 const create = async (paylode: IRegister): Promise<any> => {
+  console.log(paylode, 'ppppp');
+
+  const id = await generateAdminId();
+  console.log({ ...paylode, id }, 'with new id');
+
+  // return;
+
   const response: any = {
     message: '',
     data: '',
+    status: '',
   };
   const { trxId } = paylode;
 
@@ -18,11 +27,11 @@ const create = async (paylode: IRegister): Promise<any> => {
     { trxId },
     { $set: { status: true } }
   );
-  console.log(paymentData, 'paymentData 111');
 
   // if data not found
   if (paymentData === null) {
-    response.message = 'data not found';
+    response.message = 'Somethings wrong check your transaction id ';
+    response.status = 404;
     return response;
   }
 
@@ -30,6 +39,7 @@ const create = async (paylode: IRegister): Promise<any> => {
     // if payment is less then 300
     if (Number(paymentData.amount) < 300) {
       response.message = 'your payment is low';
+      response.status = 200;
       response.data = [];
       return response;
     }
@@ -39,24 +49,22 @@ const create = async (paylode: IRegister): Promise<any> => {
     if (paymentData.status) {
       response.message = 'Already registration confim';
       response.data = paymentData;
+      response.status = 208;
       return response;
     }
     //  update before data save
-    const updateStatus = await Payment.findOneAndUpdate(
-      { trxId },
-      { status: true },
-      { new: true }
-    );
-
-    console.log(updateStatus);
+    // const updateStatus = await Payment.findOneAndUpdate(
+    //   { trxId },
+    //   { status: true },
+    //   { new: true }
+    // );
 
     // user data save
-    const result = await Register.create(paylode);
+    const result = await Register.create({ ...paylode, id });
     if (result) {
-      console.log(result, 'yoy');
-
       response.message = 'Congratulation your registration success';
-      response.dta = result;
+      response.data = result;
+      response.status = 200;
       return response;
     }
   }

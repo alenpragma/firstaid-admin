@@ -3,9 +3,19 @@ import { IRegister, RegisterModal } from './register.Interface';
 
 const RegisterSchema = new Schema<IRegister, RegisterModal>(
   {
+    id: {
+      type: String,
+      required: [true, 'id is required'],
+      unique: true,
+    },
     name: {
       type: String,
       required: [true, 'name is required'],
+    },
+    role: {
+      type: String,
+      required: [true, 'role is required'],
+      default: 'visitor',
     },
     phone: {
       type: String,

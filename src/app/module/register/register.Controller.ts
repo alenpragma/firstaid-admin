@@ -12,10 +12,9 @@ const create = catchAsync(async (req: Request, res: Response) => {
   const { ...data } = req.body;
 
   const result = await Services.create(data);
-  console.log(result, 'controler');
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: result?.status,
     success: true,
     message: result?.message,
     data: result?.data,
