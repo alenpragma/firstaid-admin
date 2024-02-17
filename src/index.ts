@@ -24,7 +24,6 @@ async function bootstrap() {
   };
 
   const unexpectedErrorHandler = (error: unknown) => {
-    // errorlogger.error(error);
     console.log(error);
     exitHandler();
   };
