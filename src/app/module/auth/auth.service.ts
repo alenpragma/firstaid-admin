@@ -1,83 +1,142 @@
-import { IUser } from './auth.interface';
-import { User } from './auth.model';
+import httpStatus from 'http-status';
+import { JwtPayload, Secret } from 'jsonwebtoken';
+import config from '../../../config';
+import ApiError from '../../../errors/ApiError';
+import { jwtHelpers } from '../../../helpers/jwtHelpers';
+import { IChagePassword, ILogin, IloginResponse } from './auth.interface';
+import { Admin } from './auth.model';
 
-const register = async (paylode: IUser): Promise<IUser> => {
-  console.log(paylode);
+const create = async (user: any) => {
+  // default password
 
-  const result = await User.create(paylode);
+  if (!user.password) {
+    user.password = config.default_admin_pass as string;
+  }
+
+  // set role
+  user.role = 'admin';
+
+  const result = await Admin.create(user);
   return result;
 };
 
-// const getAllBuildPc = async (
-//   filters:any,
-//   pageinationOptions: any
-// ): Promise<IGenericResponse<IUser[]>> => {
-//   // pagination helpers
-//   const { page, limit, skip, sortBy, sortOrder } =
-//     calculatePagination(pageinationOptions);
+const login = async (payload: ILogin): Promise<IloginResponse> => {
+  const { id, password } = payload;
 
-//   const { searchTerm, ...filtersData } = filters;
+  // check
 
-//   const andCondation = [];
+  const isUserExist = await Admin.isUserExist(id);
 
-// if (searchTerm) {
-//   andCondation.push({
-//     $or: pcPartsSearchableFields.map(field => ({
-//       [field]: { $regex: searchTerm, $options: 'i' },
-//     })),
-//   });
-// }
+  if (!isUserExist) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User does not found');
+  }
+  // console.log(password, isUserExist.password);
 
-// if (Object.keys(filtersData).length) {
-//   andCondation.push({
-//     $and: Object.entries(filtersData).map(([field, value]) => ({
-//       [field]: value,
-//     })),
-//   });
-// }
+  if (
+    isUserExist.password &&
+    !(await Admin.isPasswordMatch(password, isUserExist.password))
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'password is incorrect');
+  }
 
-//   const sortCondations: { [key: string]: SortOrder } = {};
+  const { id: userId, role } = isUserExist;
+  // console.log(config);
 
-//   if (sortBy && sortOrder) {
-//     sortCondations[sortBy] = sortOrder;
-//   }
-//   const requestCondetion =
-//     andCondation.length > 0 ? { $and: andCondation } : {};
+  const accessToken = jwtHelpers.createToken(
+    { userId, role },
+    config.jwt.secret as Secret,
+    config.jwt.secret_expires_in as string
+  );
 
-//   const result = await Builder.find(requestCondetion)
-//     .sort(sortCondations)
-//     .skip(skip)
-//     .limit(limit);
+  // console.log(accessToken, 'accessToken');
 
-//   const total = await Builder.countDocuments();
+  const refreshToken = jwtHelpers.createToken(
+    { userId, role },
+    config.jwt.refresh_secret as Secret,
+    config.jwt.refresh_secret_expires_in as string
+  );
 
-//   return {
-//     meta: {
-//       page,
-//       limit,
-//       total,
-//     },
-//     data: result,
-//   };
-// };
+  // console.log(refreshToken, 'refreshToken');
 
-const getSingleUser = async (email: string): Promise<IUser | null> => {
-  const result = await User.findOne({ email });
-  return result;
+  return {
+    accessToken,
+    refreshToken,
+  };
 };
 
-const updateUserById = async (
-  id: string,
-  paylode: IUser
-): Promise<IUser | null> => {
-  const result = await User.findByIdAndUpdate({ _id: id }, paylode, {
-    new: true,
-  });
-  return result;
+const passwordChange = async (
+  user: JwtPayload | null,
+  paylode: IChagePassword
+): Promise<void> => {
+  const { oldPassword, newPassword } = paylode;
+
+  // Step 1 -> checking is user exist
+  // alternative way to change password
+  console.log(user);
+
+  const isUserExist = await Admin.findOne({ id: user?.userId }).select(
+    '+password'
+  );
+  console.log(isUserExist, 'this is user');
+
+  if (!isUserExist) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User does not exist');
+  }
+
+  //  Step 2 -> checking old password
+
+  if (
+    isUserExist.password &&
+    !(await Admin.isPasswordMatch(oldPassword, isUserExist.password))
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Old password is incorrect');
+  }
+
+  isUserExist.password = newPassword;
+  isUserExist.needsPasswordChange = false;
+
+  // update password using save method
+  isUserExist.save();
 };
 
-export const authServices = {
-  register,
-  getSingleUser,
-  updateUserById,
+const refreshToken = async (token: string): Promise<any> => {
+  // verify token
+  let verifiedToken = null;
+  try {
+    verifiedToken = jwtHelpers.verifyToken(
+      token,
+      config.jwt.refresh_secret as Secret
+    );
+  } catch (error) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'invalid refresh token');
+  }
+
+  const { userId } = verifiedToken;
+
+  // // user deleted fromd database then have refresh token
+  // // checking deleted user
+  const isUserExist = await Admin.isUserExist(userId);
+  if (!isUserExist) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User Does not exist');
+  }
+
+  // genatate new token
+
+  const newAccessToken = jwtHelpers.createToken(
+    { id: isUserExist.id, role: isUserExist.role },
+    config.jwt.secret as Secret,
+    config.jwt.secret_expires_in as string
+  );
+  console.log(newAccessToken, 'new AccessToken');
+
+  return {
+    accessToken: newAccessToken,
+  };
+};
+
+export const AuthService = {
+  create,
+  login,
+  passwordChange,
+  refreshToken,
 };

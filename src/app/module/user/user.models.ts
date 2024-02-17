@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
-import { Schema, model } from 'mongoose';
+import { Schema } from 'mongoose';
 import config from '../../../config';
-import { AdminModal, IAdmin } from './auth.interface';
+import { IUser } from './user.interface';
+
+//  Create a Schema corresponding to the document interface.
 
 const adminSchema = new Schema(
   {
@@ -27,12 +29,14 @@ const adminSchema = new Schema(
 
 adminSchema.statics.isUserExist = async function (
   id: string
-): Promise<Pick<IAdmin, 'id' | 'role' | 'password'> | null> {
-  // console.log(id, 'id');
-
-  const user = await Admin.findOne({ id }, { id: 1, role: 1, password: 1 });
-  // console.log(user, 'user');
-
+): Promise<Pick<
+  IUser,
+  'id' | 'role' | 'password' | 'needsPasswordChange'
+> | null> {
+  const user = await User.findOne(
+    { id },
+    { id: 1, role: 1, needsPasswordChange: 1, password: 1 }
+  );
   return user;
 };
 
@@ -53,9 +57,8 @@ adminSchema.pre('save', async function (next) {
     user.password,
     Number(config.bycrypt_solt_rounds)
   );
-  console.log(user);
 
   next();
 });
 
-export const Admin = model<IAdmin, AdminModal>('admin-user', adminSchema);
+// export const User = model<IUser, UserModal>('admin-user', adminSchema);

@@ -1,95 +1,100 @@
-import bcrypt from 'bcrypt';
-import { Request, Response } from 'express';
+import { Request, RequestHandler, Response } from 'express';
 import httpStatus from 'http-status';
+import config from '../../../config';
 import catchAsync from '../../../shared/catchAsync';
 import sendResponse from '../../../shared/sendResponse';
-import { IUser } from './auth.interface';
-import { authServices } from './auth.service';
+import { IloginResponse } from './auth.interface';
+import { AuthService } from './auth.service';
 
-const register = catchAsync(async (req: Request, res: Response) => {
-  const { password, email, name } = req.body;
+const create: RequestHandler = catchAsync(
+  async (req: Request, res: Response) => {
+    const { ...userData } = req.body;
+    const result = await AuthService.create(userData);
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    sendResponse<any>(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'User Created Successfully',
+      data: result,
+    });
+  }
+);
 
-  const result = await authServices.register({ name, email, hashedPassword });
-  console.log(result);
+const login = catchAsync(async (req: Request, res: Response) => {
+  const { ...loginData } = req.body;
+  // console.log(loginData);
+
+  const result = await AuthService.login(loginData);
+
+  const { refreshToken } = result;
+
+  // set refresh token into cookie
+  const cookieOptions = {
+    secure: config.env === 'production',
+    httpOnly: true,
+  };
+  res.cookie('refreshToken', refreshToken, cookieOptions);
+
+  // delete result.refreshToken
+
+  sendResponse<IloginResponse>(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User Loggedin successfully',
+    data: result,
+  });
+
+  // console.log(req.body);
+});
+
+const changePassword = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+
+  const { ...passwordData } = req.body;
+
+  console.log(passwordData, user, '111111');
+
+  const result = await AuthService.passwordChange(user, passwordData);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User Register Successfully',
+    message: 'Password change successfully',
     data: result,
   });
+
+  // console.log(req.body);
 });
 
-//  get All Parts
+const refreshToken = catchAsync(async (req: Request, res: Response) => {
+  const { refreshToken } = req.cookies;
+  console.log(refreshToken, 'my token');
 
-// const getAllBuildPc = catchAsync(async (req: Request, res: Response) => {
-//   const query = req?.query;
+  const result = await AuthService.refreshToken(refreshToken);
+  console.log(result, 'refreshToken');
 
-//   const paginationOptions = pick(query, paginationFields);
-//   const filters = pick(query, pcPartsFilterableFields);
+  // set refresh token into cookie
+  const cookieOptions = {
+    secure: config.env === 'production',
+    httpOnly: true,
+  };
 
-//   const result = await authServices.getAllBuildPc(
-//     filters,
-//     paginationOptions
-//   );
-//   // console.log(result);
+  res.cookie('refreshToken', refreshToken, cookieOptions);
 
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: 'Pc Retrieved  Succesfully',
-//     data: result.data,
-//   });
-// });
-
-const getSingleUser = catchAsync(async (req: Request, res: Response) => {
-  const email = req.params.email;
-  console.log(email);
-
-  const result = await authServices.getSingleUser(email);
-  console.log(result);
-
-  sendResponse<IUser>(res, {
+  // sendResponse<IRefreshTokenResponse>(res, {
+  sendResponse<any>(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User Retrieved Successfully',
+    message: 'New Refresh token generated!',
     data: result,
   });
+
+  // console.log(req.body);
 });
 
-// // update Parts By Id
-const updateUser = catchAsync(async (req: Request, res: Response) => {
-  const id = req.params.id;
-  const updatedData = req.body;
-
-  const result = await authServices.updateUserById(id, updatedData);
-
-  sendResponse<IUser>(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'User successfully updated',
-    data: result,
-  });
-});
-
-// // // Delete Parts
-// const deleteBuildPc = catchAsync(async (req: Request, res: Response) => {
-//   const id = req.params.id;
-
-//   const result = await authServices.deleteBuildPc(id);
-
-//   sendResponse<IBuilder>(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: 'Build Pc deleted Successfully',
-//     data: result,
-//   });
-// });
-
-export const authController = {
-  register,
-  getSingleUser,
-  updateUser,
+export const AuthController = {
+  create,
+  login,
+  changePassword,
+  refreshToken,
 };

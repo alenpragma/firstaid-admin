@@ -12,6 +12,7 @@ const create = catchAsync(async (req: Request, res: Response) => {
   const { ...data } = req.body;
 
   const result = await Services.create(data);
+  console.log(result, 'yoy');
 
   sendResponse(res, {
     statusCode: result?.status,
