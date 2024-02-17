@@ -15,7 +15,6 @@ const createAdmin = async (admin: IAdmin): Promise<IUser | null> => {
   }
   // set role
   admin.role = 'admin';
-  admin.role = 'admin';
   const id = await generateAdminId();
   admin.id = id;
 
