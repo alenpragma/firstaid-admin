@@ -13,6 +13,10 @@ const adminSchema = new Schema(
       type: String,
       required: [true, 'role is required'],
     },
+    name: {
+      type: String,
+      required: [true, 'name is required'],
+    },
     phone: {
       type: String,
       required: [true, 'Phone is required'],

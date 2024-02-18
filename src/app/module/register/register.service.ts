@@ -1,4 +1,6 @@
+import httpStatus from 'http-status';
 import { SortOrder } from 'mongoose';
+import ApiError from '../../../errors/ApiError';
 import calculatePagination from '../../../helpers/paginationHelper';
 import { IGenericResponse } from '../../../interfaces/common';
 import { IPaginationOptions } from '../../../interfaces/pagination';
@@ -23,41 +25,43 @@ const create = async (paylode: IRegister): Promise<any> => {
   };
   const { trxId } = paylode;
 
-  const paymentData = await Payment.findOneAndUpdate(
-    { trxId },
-    { $set: { status: true } }
+  const paymentData = await Payment.findOne(
+    { trxId }
+    // { $set: { status: true } }
   );
 
   // if data not found
   if (paymentData === null) {
-    response.message = 'Somethings wrong check your transaction id ';
-    response.status = 404;
-    return response;
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Somethings wrong check your transaction id  '
+    );
   }
+  console.log(paymentData, 'paymentData');
+
+  // if data not found
+  // if (paymentData === null) {
+  //   response.message = 'Somethings wrong check your transaction id ';
+  //   response.status = 404;
+  //   return response;
+  // }
 
   if (paymentData && paymentData.trxId === String(paylode.trxId)) {
     // if payment is less then 300
     if (Number(paymentData.amount) < 300) {
-      response.message = 'your payment is low';
-      response.status = 200;
-      response.data = [];
-      return response;
+      throw new ApiError(httpStatus.BAD_REQUEST, 'your payment is low');
     }
     // ok the abobe
 
     // if registration already conform
-    if (paymentData.status) {
+    if (paymentData.status === true) {
       response.message = 'Already registration confim';
       response.data = paymentData;
-      response.status = 208;
+      response.status = 200;
       return response;
     }
     //  update before data save
-    // const updateStatus = await Payment.findOneAndUpdate(
-    //   { trxId },
-    //   { status: true },
-    //   { new: true }
-    // );
+    await Payment.findOneAndUpdate({ trxId }, { status: true }, { new: true });
 
     // user data save
     const result = await Register.create({ ...paylode, id });
@@ -68,10 +72,8 @@ const create = async (paylode: IRegister): Promise<any> => {
       return response;
     }
   }
-
-  // console.log(paymentData, 'paymentData');
-
   return response;
+  // console.log(paymentData, 'paymentData');
 };
 
 const getAllData = async (

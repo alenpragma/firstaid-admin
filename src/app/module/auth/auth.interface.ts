@@ -5,6 +5,7 @@ export type IAdmin = {
   role: string;
   password: string;
   phone: string;
+  name: string;
   needsPasswordChange: true | false;
   passwordChangedAt: Date;
 };
