@@ -55,8 +55,10 @@ const create = async (paylode: IRegister): Promise<any> => {
 
     // if registration already conform
     if (paymentData.status === true) {
+     const userdata = await Register.findOne({trxId});
+
       response.message = 'Already registration confim';
-      response.data = paymentData;
+      response.data = userdata;
       response.status = 200;
       return response;
     }
